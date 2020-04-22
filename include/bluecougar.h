@@ -47,6 +47,7 @@ class BlueCougar {
     ~BlueCougar();
     bool grabImage(sensor_msgs::Image &image_msg);
     void setHardwareTriggeredSnapshotMode();
+    std::string serial(){return this->serial_;};
 
     private:
     bool binning_on_;
@@ -56,6 +57,7 @@ class BlueCougar {
     int expose_us_;
     double frame_rate_;
     int cnt_img;
+    std::string serial_;
 
     mvIMPACT::acquire::DeviceManager devMgr_;
     mvIMPACT::acquire::Device* dev_{nullptr}; // multiple devices
@@ -76,8 +78,9 @@ agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate)
     cnt_img = 0;
     
     dev_->open();
+    serial_ = dev_->serial.read();
     std::cout<<dev_->product.read()
-    <<" / serial: "<< dev_->serial.read() <<std::endl;
+    <<" / serial: "<< serial_ <<std::endl;
     cs_ = new mvIMPACT::acquire::CameraSettingsBlueCOUGAR(dev_);
     fi_ = new mvIMPACT::acquire::FunctionInterface(dev_);
     stat_ = new mvIMPACT::acquire::Statistics(dev_);
@@ -112,7 +115,7 @@ BlueCougar::~BlueCougar() {
 };
 
 void BlueCougar::setHardwareTriggeredSnapshotMode() {
-  std::cout<<"Set mvBlueCOUGAR-X104iG in trigger mode."<<std::endl;
+  std::cout<<"Set mvBlueCOUGAR-X104iG-"<<serial_<<" in trigger mode."<<std::endl;
     // trigger mode
     // ctsDigIn0 : digitalInput 0 as trigger source
     // In this application an image is triggered by a rising edge. (over +3.3 V) 

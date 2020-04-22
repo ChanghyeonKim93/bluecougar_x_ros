@@ -32,7 +32,7 @@ class BlueCOUGAR_MULTIPLE_ROS{
     public:
     explicit BlueCOUGAR_MULTIPLE_ROS(ros::NodeHandle& nh, bool binning_on, 
     bool triggered_on, bool aec_on, bool agc_on, int expose_us, double frame_rate)
-    : nh_(nh), it_(nh_), camera_pub_(it_.advertise("image_raw", 1))
+    : nh_(nh), it_(nh_)
     {
         num_devs_ = getValidDevices(devMgr_, validDevices_);
         std::cout <<"# of valid devices: "<< num_devs_ <<std::endl;
@@ -43,6 +43,8 @@ class BlueCOUGAR_MULTIPLE_ROS{
             triggered_on, aec_on, agc_on, expose_us, frame_rate);
             bluecougars_.push_back(bluecougar_temp);
         }
+        std::string topic_name = bluecougars_[0]->serial()+"/image_raw";
+        camera_pub_ = it_.advertise(topic_name,1);
     };    
     ~BlueCOUGAR_MULTIPLE_ROS();
 
