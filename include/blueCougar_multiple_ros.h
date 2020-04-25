@@ -28,43 +28,51 @@
 using namespace mvIMPACT::acquire;
 using namespace mvIMPACT::acquire::GenICam;
 
-class BlueCOUGAR_MULTIPLE_ROS{
-    public:
+class BlueCOUGAR_MULTIPLE_ROS {
+public:
     explicit BlueCOUGAR_MULTIPLE_ROS(ros::NodeHandle& nh, bool binning_on, 
     bool triggered_on, bool aec_on, bool agc_on, int expose_us, double frame_rate)
     : nh_(nh), it_(nh_)
     {
         num_devs_ = getValidDevices(devMgr_, validDevices_);
-        std::cout <<"# of valid devices: "<< num_devs_ <<std::endl;
+        std::cout << "# of valid devices: " << num_devs_ << std::endl;
         // show devices information
-        for(int i = 0; i <num_devs_; i++){
-            std::cout<<"["<<i<<"]: ";
-            BlueCougar* bluecougar_temp = new BlueCougar(validDevices_[i],binning_on, 
-            triggered_on, aec_on, agc_on, expose_us, frame_rate);
+        for(int i = 0; i < num_devs_; i++){
+            std::cout << "[" << i << "]: ";
+            BlueCougar* bluecougar_temp = 
+            new BlueCougar(validDevices_[i], i, binning_on, triggered_on, 
+                        aec_on, agc_on, expose_us, frame_rate);
+            std::string topic_name = "/" + std::to_string(i) + "/image_raw";
+
             bluecougars_.push_back(bluecougar_temp);
+
+            image_transport::Publisher camera_pub_ = it_.advertise(topic_name,1);
+            image_publishers_.push_back(camera_pub_);
+            msgs_img_.push_back(sensor_msgs::Image());
         }
-        std::string topic_name = bluecougars_[0]->serial()+"/image_raw";
-        camera_pub_ = it_.advertise(topic_name,1);
+        std::cout<< "Please wait for setting cameras...\n"<<std::endl;
+        sleep(2);
     };    
     ~BlueCOUGAR_MULTIPLE_ROS();
 
-    sensor_msgs::Image msg_img_;
+    std::vector<sensor_msgs::Image> msgs_img_;
     void Publish();
 
-    private:
+private:
     int num_devs_;
     ros::NodeHandle nh_;
     mvIMPACT::acquire::DeviceManager devMgr_;
     std::vector<mvIMPACT::acquire::Device*> validDevices_; // multiple devices
     std::vector<BlueCougar*> bluecougars_;
 
+    std::vector<image_transport::Publisher> image_publishers_;
+    std::vector<image_transport::ImageTransport> img_transports_;
+
     image_transport::ImageTransport it_;
     image_transport::Publisher camera_pub_;  
 };
 
 /* IMPLEMENTATION */
-
-
 BlueCOUGAR_MULTIPLE_ROS::~BlueCOUGAR_MULTIPLE_ROS(){
     for(int i = 0; i < num_devs_; i++){
         delete bluecougars_[i];
@@ -72,8 +80,12 @@ BlueCOUGAR_MULTIPLE_ROS::~BlueCOUGAR_MULTIPLE_ROS(){
 };
 //const sensor_msgs::ImagePtr& image_msg
 void BlueCOUGAR_MULTIPLE_ROS::Publish() {
-    bluecougars_[0]->grabImage(msg_img_);
-    camera_pub_.publish(msg_img_);
+    for(int i = 0; i < num_devs_; i++){
+        bluecougars_[i]->grabImage(msgs_img_[i]);
+    }   
+    for(int i = 0; i <num_devs_; i++){
+        image_publishers_[i].publish(msgs_img_[i]);
+    }
 };
 
 #endif

@@ -41,9 +41,9 @@ std::string BayerPatternToEncoding(const TBayerMosaicParity& bayer_pattern,
 
 class BlueCougar {
     public:
-    BlueCougar(mvIMPACT::acquire::Device* dev, bool binning_on, 
-      bool triggered_on, bool aec_on, bool agc_on, int expose_us, 
-      double frame_rate);
+    BlueCougar(mvIMPACT::acquire::Device* dev, int cam_id, 
+      bool binning_on, bool triggered_on, bool aec_on, bool agc_on, 
+      int expose_us, double frame_rate);
     ~BlueCougar();
     bool grabImage(sensor_msgs::Image &image_msg);
     void setHardwareTriggeredSnapshotMode();
@@ -58,6 +58,7 @@ class BlueCougar {
     double frame_rate_;
     int cnt_img;
     std::string serial_;
+    std::string frame_id_;
 
     mvIMPACT::acquire::DeviceManager devMgr_;
     mvIMPACT::acquire::Device* dev_{nullptr}; // multiple devices
@@ -70,7 +71,7 @@ class BlueCougar {
 
 /* IMPLEMENTATION */
 
-BlueCougar::BlueCougar(mvIMPACT::acquire::Device* dev, bool binning_on, 
+BlueCougar::BlueCougar(mvIMPACT::acquire::Device* dev, int cam_id, bool binning_on, 
 bool trigger_on, bool aec_on, bool agc_on, int expose_us, double frame_rate) 
 : dev_(dev), binning_on_(binning_on), trigger_on_(trigger_on), aec_on_(aec_on), 
 agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate)
@@ -78,31 +79,28 @@ agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate)
     cnt_img = 0;
     
     dev_->open();
+    frame_id_ = std::to_string(cam_id);
     serial_ = dev_->serial.read();
-    std::cout<<dev_->product.read()
-    <<" / serial: "<< serial_ <<std::endl;
+    std::cout<<dev_->product.read() << " / serial [" << serial_ << "]";
     cs_ = new mvIMPACT::acquire::CameraSettingsBlueCOUGAR(dev_);
     fi_ = new mvIMPACT::acquire::FunctionInterface(dev_);
     stat_ = new mvIMPACT::acquire::Statistics(dev_);
 
     //cs_->autoControlMode.write(acmStandard);
     //cs_->triggerMode.write(ctmContinuous); // ctmOnDemand ctmContinuous
-    if(binning_on_ == true)
-      cs_->binningMode.write(cbmBinningHV); // cbmOff: no binning. / cbmBinningHV
+    if(binning_on_ == true) cs_->binningMode.write(cbmBinningHV); // cbmOff: no binning. / cbmBinningHV
     cs_->expose_us.write(expose_us_);
     cs_->frameRate_Hz.write(frame_rate_);
 
-    if(aec_on_ == true)
-      cs_->autoExposeControl.write(aecOn); // auto expose ?
-    if(agc_on_ == true)
-      cs_->autoGainControl.write(agcOn); // auto gain ?
+    if(aec_on_ == true) cs_->autoExposeControl.write(aecOn); // auto expose ?
+    if(agc_on_ == true) cs_->autoGainControl.write(agcOn); // auto gain ?
 
-    std::cout<<"exposeControl: "<<cs_->autoExposeControl.read()<<std::endl;
-    std::cout<<"frame rate: "<<cs_->frameRate_Hz.read()<<std::endl;
-    std::cout<<"exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
+    std::cout<<" / expose_ctrl?: "<<cs_->autoExposeControl.read();
+    std::cout<<" / freq.: "<<cs_->frameRate_Hz.read()<<" [Hz]"<<std::endl;
+    //std::cout<<"exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
 
-    if(trigger_on_ == true)
-      setHardwareTriggeredSnapshotMode();
+    if(trigger_on_ == true) setHardwareTriggeredSnapshotMode();
+   
 };
 
 BlueCougar::~BlueCougar() {
@@ -115,24 +113,24 @@ BlueCougar::~BlueCougar() {
 };
 
 void BlueCougar::setHardwareTriggeredSnapshotMode() {
-  std::cout<<"Set mvBlueCOUGAR-X104iG-"<<serial_<<" in trigger mode."<<std::endl;
+  std::cout<<"Set ["<<serial_<<"] in trigger mode."<<std::endl;
     // trigger mode
     // ctsDigIn0 : digitalInput 0 as trigger source
     // In this application an image is triggered by a rising edge. (over +3.3 V) 
     cs_->triggerSource.write(ctsDigIn0);
     cs_->triggerMode.write(ctmOnRisingEdge);
-    cs_->imageRequestTimeout_ms.write(0); // infinite trigger timeout
+    //cs_->imageRequestTimeout_ms.write(0); // infinite trigger timeout
    
-    cs_->autoExposeControl.write(aecOff); // auto expose ?
-    cs_->autoGainControl.write(agcOff); // auto gain ?
+    //cs_->autoExposeControl.write(aecOff); // auto expose ?
+    //cs_->autoGainControl.write(agcOff); // auto gain ?
     //cs_->exposeMode.write(cemStandard);
-    cs_->binningMode.write(cbmOff); // cbmOff: no binning. 
+    //cs_->binningMode.write(cbmOff); // cbmOff: no binning. 
     //cs_->expose_us.write(10000);
     // cbmBinningHV: half resolution binning.
 
-    std::cout<<"trigger source: "<<cs_->triggerSource.read()<<std::endl;
-    std::cout<<"trigger mode: "<<cs_->triggerMode.read()<<std::endl;
-    std::cout<<"exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
+    std::cout<<"  trigger source: "<<cs_->triggerSource.read();
+    std::cout<<" / trigger mode: "<<cs_->triggerMode.read();
+    std::cout<<" / exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
 };
 
 bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
@@ -143,15 +141,16 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
   // unlocked no matter which result mvIMPACT::acquire::Request::requestResult
   // contains.
   // http://www.matrix-vision.com/manuals/SDK_CPP/ImageAcquisition_section_capture.html
-    fi_->imageRequestSingle();
-    int request_nr = fi_->imageRequestWaitFor(1000);
+    int error_msg = fi_->imageRequestSingle();
+    // if(error_msg == mvIMPACT::acquire::DEV_NO_FREE_REQUEST_AVAILABLE) std::cout<<"no available\n";
+
+    int request_nr = fi_->imageRequestWaitFor(100);
     // if failed,
     if(!fi_->isRequestNrValid( request_nr )) {
-        std::cout<<"Waiting for new trigger signal..."<<std::endl;
+        // std::cout<<"["<<frame_id_<<"] waits for new trigger signal..."<<std::endl;
         fi_->imageRequestUnlock( request_nr );
         return false;
     }
-    std::cout << " Triggered ";
 
     request_ = fi_->getRequest(request_nr);
     // Check if request is ok
@@ -162,7 +161,7 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
         return false;
     }
     ++cnt_img;
-    std::cout<< " image received! # of image: ["<< cnt_img <<"]"<<std::endl;
+    std::cout<< "cam ["<< frame_id_<< "] rcvd! # of img [" << cnt_img <<"] ";
 
     std::string encoding;
     const auto bayer_mosaic_parity = request_->imageBayerMosaicParity.read();
@@ -173,23 +172,24 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
     } else {
         encoding = PixelFormatToEncoding(request_->imagePixelFormat.read());
     }
+    image_msg.header.frame_id = frame_id_;
     sensor_msgs::fillImage(image_msg, encoding, request_->imageHeight.read(),
                          request_->imageWidth.read(),
                          request_->imageLinePitch.read(),
                          request_->imageData.read());
-    std::cout<<"size: ["<<request_->imageWidth.read()<<"x"
-    <<request_->imageHeight.read()<<"]"<<std::endl;
+    std::cout<<" sz: [" << request_->imageWidth.read()
+    << "x" << request_->imageHeight.read()<<"]";
 
-    std::cout<<"exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
-    std::cout<<"Frame rate: "
-    << ": " << stat_->framesPerSecond.name() << ": " 
-      << stat_->framesPerSecond.readS()
-    << ", " << stat_->errorCount.name() << ": " 
-      << stat_->errorCount.readS()
-    << ", " << stat_->captureTime_s.name() << ": " 
-      << stat_->captureTime_s.readS() << std::endl;
-    std::cout<<"exposure time: "<<request_->infoExposeTime_us.read()<<" [us]"<<std::endl;
-   
+    // std::cout<<"exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
+    // std::cout<<"Frame rate: "
+    // << ": " << stat_->framesPerSecond.name() << ": " 
+    //   << stat_->framesPerSecond.readS()
+    // << ", " << stat_->errorCount.name() << ": " 
+    //   << stat_->errorCount.readS()
+    // << ", " << stat_->captureTime_s.name() << ": " 
+    //   << stat_->captureTime_s.readS() << std::endl;
+    std::cout<<" expose_us: "<<request_->infoExposeTime_us.read()<<" [us]"<<std::endl;
+    // std::cout<<"exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
     // Release capture request
     fi_->imageRequestUnlock(request_nr);
     return true;
