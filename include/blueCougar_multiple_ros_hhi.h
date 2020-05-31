@@ -56,10 +56,12 @@ public:
         sub_msg_ = nh_.subscribe("/hhi/msg", 1, &BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI, this);
         cout << "Please wait for setting cameras...\n";
         ros::Duration(3.0).sleep();
+        cout << "camera setting is done.\n";
     };    
     ~BlueCOUGAR_MULTIPLE_ROS_HHI();
 
     void callbackHHI(const std_msgs::Int32::ConstPtr& msg);
+    int getStatus() const { return msg_.data;};
 
 private:
     int n_devs_; // # of connected mvBlueCOUGAR cameras.
@@ -89,6 +91,7 @@ BlueCOUGAR_MULTIPLE_ROS_HHI::~BlueCOUGAR_MULTIPLE_ROS_HHI(){
 
 void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI(const std_msgs::Int32::ConstPtr& msg)
 {
+    msg_.data = msg->data;
     // for(int i = 0; i < n_devs_; i++){
     //     bluecougars_[i]->grabImage(img_msgs_[i]);
     // }   

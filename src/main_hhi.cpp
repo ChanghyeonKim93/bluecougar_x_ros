@@ -28,16 +28,15 @@ int main(int argc, char **argv) {
     ros::param::get("~frame_rate", frame_rate);
 
     BlueCOUGAR_MULTIPLE_ROS_HHI *bluecougars = 
-        new BlueCOUGAR_MULTIPLE_ROS_HHI(nh, 
-        binning_on, triggered_on, 
+        new BlueCOUGAR_MULTIPLE_ROS_HHI(nh, binning_on, triggered_on, 
         aec_on, agc_on, expose_us, frame_rate);
     
-    while(ros::ok())
+    while((bluecougars->getStatus() > -1) && ros::ok())
     {
         ros::spinOnce();
     }
 
     delete bluecougars;
-    ROS_INFO_STREAM("CEASE it.");
+    ROS_INFO_STREAM("Cease cameras.\n");
     return -1;
 };
