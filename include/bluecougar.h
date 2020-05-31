@@ -20,6 +20,7 @@
 #include <mvIMPACT_CPP/mvIMPACT_acquire.h>
 #include <mvIMPACT_CPP/mvIMPACT_acquire_GenICam.h>
 
+using namespace std;
 using namespace mvIMPACT::acquire;
 using namespace mvIMPACT::acquire::GenICam;
 using namespace sensor_msgs::image_encodings;
@@ -29,27 +30,27 @@ using namespace sensor_msgs::image_encodings;
  * @param pixel_format mvIMPACT ImageBufferPixelFormat
  * @return Image encoding
  */
-std::string PixelFormatToEncoding(const TImageBufferPixelFormat& pixel_format);
+string PixelFormatToEncoding(const TImageBufferPixelFormat& pixel_format);
 /**
  * @brief BayerPatternToEncoding Convert bayer pattern to image encoding
  * @param bayer_pattern mvIMPACT BayerMosaicParity
  * @param bytes_per_pixel Number of bytes per pixel
  * @return Image encoding
  */
-std::string BayerPatternToEncoding(const TBayerMosaicParity& bayer_pattern,
+string BayerPatternToEncoding(const TBayerMosaicParity& bayer_pattern,
                                    int bytes_per_pixel);
 
 class BlueCougar {
-    public:
+  public:
     BlueCougar(mvIMPACT::acquire::Device* dev, int cam_id, 
       bool binning_on, bool triggered_on, bool aec_on, bool agc_on, 
       int expose_us, double frame_rate);
     ~BlueCougar();
     bool grabImage(sensor_msgs::Image &image_msg);
     void setHardwareTriggeredSnapshotMode();
-    std::string serial(){return this->serial_;};
+    string serial(){return this->serial_;};
 
-    private:
+  private:
     bool binning_on_;
     bool trigger_on_; 
     bool aec_on_;
@@ -57,8 +58,8 @@ class BlueCougar {
     int expose_us_;
     double frame_rate_;
     int cnt_img;
-    std::string serial_;
-    std::string frame_id_;
+    string serial_;
+    string frame_id_;
 
     mvIMPACT::acquire::DeviceManager devMgr_;
     mvIMPACT::acquire::Device* dev_{nullptr}; // multiple devices
@@ -70,7 +71,6 @@ class BlueCougar {
 };
 
 /* IMPLEMENTATION */
-
 BlueCougar::BlueCougar(mvIMPACT::acquire::Device* dev, int cam_id, bool binning_on, 
 bool trigger_on, bool aec_on, bool agc_on, int expose_us, double frame_rate) 
 : dev_(dev), binning_on_(binning_on), trigger_on_(trigger_on), aec_on_(aec_on), 
@@ -80,10 +80,10 @@ agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate)
     
     dev_->open();
     frame_id_ = std::to_string(cam_id);
-    serial_ = dev_->serial.read();
-    std::cout<<dev_->product.read() << " / serial [" << serial_ << "]";
-    cs_ = new mvIMPACT::acquire::CameraSettingsBlueCOUGAR(dev_);
-    fi_ = new mvIMPACT::acquire::FunctionInterface(dev_);
+    serial_   = dev_->serial.read();
+    cout << dev_->product.read() << " / serial [" << serial_ << "]";
+    cs_   = new mvIMPACT::acquire::CameraSettingsBlueCOUGAR(dev_);
+    fi_   = new mvIMPACT::acquire::FunctionInterface(dev_);
     stat_ = new mvIMPACT::acquire::Statistics(dev_);
 
     //cs_->autoControlMode.write(acmStandard);
@@ -95,8 +95,8 @@ agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate)
     if(aec_on_ == true) cs_->autoExposeControl.write(aecOn); // auto expose ?
     if(agc_on_ == true) cs_->autoGainControl.write(agcOn); // auto gain ?
 
-    std::cout<<" / expose_ctrl?: "<<cs_->autoExposeControl.read();
-    std::cout<<" / freq.: "<<cs_->frameRate_Hz.read()<<" [Hz]"<<std::endl;
+    cout << " / expose_ctrl?: "<<cs_->autoExposeControl.read();
+    cout << " / freq.: "<<cs_->frameRate_Hz.read()<<" [Hz]" << endl;
     //std::cout<<"exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
 
     if(trigger_on_ == true) setHardwareTriggeredSnapshotMode();
@@ -113,7 +113,7 @@ BlueCougar::~BlueCougar() {
 };
 
 void BlueCougar::setHardwareTriggeredSnapshotMode() {
-  std::cout<<"Set ["<<serial_<<"] in trigger mode."<<std::endl;
+  cout<<"Set ["<<serial_<<"] in trigger mode."<<endl;
     // trigger mode
     // ctsDigIn0 : digitalInput 0 as trigger source
     // In this application an image is triggered by a rising edge. (over +3.3 V) 
@@ -128,9 +128,9 @@ void BlueCougar::setHardwareTriggeredSnapshotMode() {
     //cs_->expose_us.write(10000);
     // cbmBinningHV: half resolution binning.
 
-    std::cout<<"  trigger source: "<<cs_->triggerSource.read();
-    std::cout<<" / trigger mode: "<<cs_->triggerMode.read();
-    std::cout<<" / exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
+    cout<<"  trigger source: "<<cs_->triggerSource.read();
+    cout<<" / trigger mode: "<<cs_->triggerMode.read();
+    cout<<" / exposure time: "<<cs_->expose_us.read()<< "[us]" << endl;
 };
 
 bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){

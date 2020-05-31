@@ -1,5 +1,5 @@
-#ifndef _BLUECOUGAR_MULTIPLE_ROS_H_
-#define _BLUECOUGAR_MULTIPLE_ROS_H_
+#ifndef _BLUECOUGAR_MULTIPLE_THREAD_ROS_H_
+#define _BLUECOUGAR_MULTIPLE_THREAD_ROS_H_
 
 #include <iostream>
 #include <vector>
@@ -23,66 +23,78 @@
 #include <mvIMPACT_CPP/mvIMPACT_acquire.h>
 #include <mvIMPACT_CPP/mvIMPACT_acquire_GenICam.h>
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
 #include "bluecougar.h"
+#include "hhi_autoexcavator/hhi_msgs.h" // dedicated msgs for HHI project.
 
 
 using namespace std;
 using namespace mvIMPACT::acquire;
 using namespace mvIMPACT::acquire::GenICam;
 
-class BlueCOUGAR_MULTIPLE_ROS {
+class BlueCOUGAR_MULTITHREAD_ROS {
 public:
-    explicit BlueCOUGAR_MULTIPLE_ROS(
+    explicit BlueCOUGAR_MULTITHREAD_ROS(
         ros::NodeHandle& nh, bool binning_on, bool triggered_on,
-        bool aec_on, bool agc_on, int expose_us, double frame_rate)
-    : nh_(nh), it_(nh_)
+        bool aec_on, bool agc_on, int expose_us, double frame_rate) 
+        : nh_(nh), it_(nh_)
     {
         n_devs_ = getValidDevices(devMgr_, validDevices_);
-        std::cout << "# of valid devices: " << n_devs_ << std::endl;
+        cout << "# of valid devices: " << n_devs_ <<"\n";
+
         // show devices information
-        for(int i = 0; i < n_devs_; i++){
-            std::cout << "[" << i << "]: ";
+        for(int i = 0; i < n_devs_; i++) {
+            cout << "[" << i << "]-th device:";
+
             BlueCougar* bluecougar_temp = 
             new BlueCougar(validDevices_[i], i, binning_on, triggered_on, 
                         aec_on, agc_on, expose_us, frame_rate);
-            std::string topic_name = "/" + std::to_string(i) + "/image_raw";
-
             bluecougars_.push_back(bluecougar_temp);
 
-            image_transport::Publisher camera_pub_ = it_.advertise(topic_name,1);
+            string topic_name = "/" + std::to_string(i) + "/image_raw";
+            image_transport::Publisher camera_pub_ = it_.advertise(topic_name, 1);
             image_publishers_.push_back(camera_pub_);
             msgs_img_.push_back(sensor_msgs::Image());
         }
-        std::cout<< "Please wait for setting cameras...\n"<<std::endl;
-        sleep(2);
+        cout << "Please wait for initialzing all cameras...\n\n\n";
+        ros::Duration(3.0).sleep(); // 3 seconds
     };    
-    ~BlueCOUGAR_MULTIPLE_ROS();
+    ~BlueCOUGAR_MULTITHREAD_ROS() {
+        for(int i = 0; i < n_devs_; i++) delete bluecougars_[i];
+    };
 
-    std::vector<sensor_msgs::Image> msgs_img_;
     void Publish();
+    std::vector<sensor_msgs::Image> msgs_img_;
 
 private:
     int n_devs_; // # of connected mvBlueCOUGAR cameras.
-    ros::NodeHandle nh_; // node handler for ROS publish.
     mvIMPACT::acquire::DeviceManager devMgr_; // Manager for all devices.
     vector<mvIMPACT::acquire::Device*> validDevices_; // multiple devices
     vector<BlueCougar*> bluecougars_;
 
+
+    ros::NodeHandle nh_; // node handler for ROS publish.
     vector<image_transport::Publisher> image_publishers_;
     vector<image_transport::ImageTransport> img_transports_;
 
     image_transport::ImageTransport it_;
-    image_transport::Publisher camera_pub_;  
+    image_transport::Publisher camera_pub_;
+
+    // subscriber for hhi_msg
+    ros::Subscriber sub_cmd_msg_;
+
+    // for multi thread
+    condition_variable cv_;
+    mutex m_;
+    vector<thread> cam_threads;
+
 };
 
 /* IMPLEMENTATION */
-BlueCOUGAR_MULTIPLE_ROS::~BlueCOUGAR_MULTIPLE_ROS(){
-    for(int i = 0; i < n_devs_; i++){
-        delete bluecougars_[i];
-    }
-};
-//const sensor_msgs::ImagePtr& image_msg
-void BlueCOUGAR_MULTIPLE_ROS::Publish() {
+void BlueCOUGAR_MULTITHREAD_ROS::Publish() {
     for(int i = 0; i < n_devs_; i++){
         bluecougars_[i]->grabImage(msgs_img_[i]);
     }   

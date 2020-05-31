@@ -7,6 +7,7 @@
 #include <image_transport/image_transport.h>
 
 #include "blueCougar_multiple_ros.h"
+//#include "hhi_autoexcavator/hhi_msgs.h" // dedicated msgs for HHI project.
 
 // trigger pin = digIn0+
 // trigger ground level is same with the Arduino ground level.
@@ -33,7 +34,8 @@ int main(int argc, char **argv) {
 
     
     BlueCOUGAR_MULTIPLE_ROS *bluecougars = 
-        new BlueCOUGAR_MULTIPLE_ROS(nh, binning_on, triggered_on, 
+        new BlueCOUGAR_MULTIPLE_ROS(nh, 
+        binning_on, triggered_on, 
         aec_on, agc_on, expose_us, frame_rate);
     
     while(ros::ok()){

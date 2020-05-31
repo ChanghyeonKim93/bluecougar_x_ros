@@ -39,6 +39,9 @@
         "tuple": "cpp",
         "typeindex": "cpp",
         "typeinfo": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "condition_variable": "cpp",
+        "memory": "cpp",
+        "mutex": "cpp"
     }
 }
