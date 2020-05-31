@@ -28,8 +28,6 @@
 #include <condition_variable>
 
 #include "bluecougar.h"
-#include "hhi_autoexcavator/hhi_msgs.h" // dedicated msgs for HHI project.
-
 
 using namespace std;
 using namespace mvIMPACT::acquire;
@@ -57,8 +55,11 @@ public:
             string topic_name = "/" + std::to_string(i) + "/image_raw";
             image_transport::Publisher camera_pub_ = it_.advertise(topic_name, 1);
             image_publishers_.push_back(camera_pub_);
-            msgs_img_.push_back(sensor_msgs::Image());
+            img_msgs_.push_back(sensor_msgs::Image());
         }
+
+        // start threads
+
         cout << "Please wait for initialzing all cameras...\n\n\n";
         ros::Duration(3.0).sleep(); // 3 seconds
     };    
@@ -66,16 +67,16 @@ public:
         for(int i = 0; i < n_devs_; i++) delete bluecougars_[i];
     };
 
-    void Publish();
-    std::vector<sensor_msgs::Image> msgs_img_;
+    void runMultipleCameras();
+    std::vector<sensor_msgs::Image> img_msgs_;
 
 private:
     int n_devs_; // # of connected mvBlueCOUGAR cameras.
     mvIMPACT::acquire::DeviceManager devMgr_; // Manager for all devices.
     vector<mvIMPACT::acquire::Device*> validDevices_; // multiple devices
-    vector<BlueCougar*> bluecougars_;
+    vector<BlueCougar*> bluecougars_; // multiple devices
 
-
+    // for ros
     ros::NodeHandle nh_; // node handler for ROS publish.
     vector<image_transport::Publisher> image_publishers_;
     vector<image_transport::ImageTransport> img_transports_;
@@ -88,19 +89,23 @@ private:
 
     // for multi thread
     condition_variable cv_;
-    mutex m_;
+    vector<mutex> mutexes_;
     vector<thread> cam_threads;
 
 };
 
 /* IMPLEMENTATION */
-void BlueCOUGAR_MULTITHREAD_ROS::Publish() {
+void BlueCOUGAR_MULTITHREAD_ROS::runMultipleCameras() {
     for(int i = 0; i < n_devs_; i++){
-        bluecougars_[i]->grabImage(msgs_img_[i]);
+        bluecougars_[i]->grabImage(img_msgs_[i]);
     }   
     for(int i = 0; i <n_devs_; i++){
-        image_publishers_[i].publish(msgs_img_[i]);
+        image_publishers_[i].publish(img_msgs_[i]);
     }
+
+    while(true){
+        
+    };
 };
 
 #endif

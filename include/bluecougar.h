@@ -20,6 +20,10 @@
 #include <mvIMPACT_CPP/mvIMPACT_acquire.h>
 #include <mvIMPACT_CPP/mvIMPACT_acquire_GenICam.h>
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
 using namespace std;
 using namespace mvIMPACT::acquire;
 using namespace mvIMPACT::acquire::GenICam;

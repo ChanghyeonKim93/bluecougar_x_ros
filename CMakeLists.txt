@@ -12,10 +12,14 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_filters
   image_transport
+
+  message_generation
 )
 catkin_package(
 	DEPENDS Eigen
-    CATKIN_DEPENDS hhi_autoexcatavor
+  CATKIN_DEPENDS 
+  message_runtime 
+  hhi_autoexcatavor
 )
 
 set(mvIMPACT_DIR /opt/mvIMPACT_Acquire)
@@ -41,9 +45,10 @@ include_directories(
   ${mvIMPACT_DIR}
  )
 
-set(SRC ${SRC} src/main.cpp)
+set(SRC ${SRC} src/main_hhi.cpp)
 
 set(DCMAKE_build_type release)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pg -O2 -m64 -Ofast -flto -msse3 -march=native -mfpmath=sse")
 add_executable (bluecougar_multiple_node ${SRC} )
+add_dependencies(bluecougar_multiple_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries (bluecougar_multiple_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} )

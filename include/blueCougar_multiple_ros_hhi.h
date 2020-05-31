@@ -1,11 +1,12 @@
-#ifndef _BLUECOUGAR_MULTIPLE_ROS_H_
-#define _BLUECOUGAR_MULTIPLE_ROS_H_
+#ifndef _BLUECOUGAR_MULTIPLE_ROS_HHI_H_
+#define _BLUECOUGAR_MULTIPLE_ROS_HHI_H_
 
 #include <iostream>
 #include <vector>
 #include <sys/time.h>
 
 #include <ros/ros.h>
+#include <std_msgs/Int32.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/image_encodings.h>
@@ -25,14 +26,13 @@
 
 #include "bluecougar.h"
 
-
 using namespace std;
 using namespace mvIMPACT::acquire;
 using namespace mvIMPACT::acquire::GenICam;
 
-class BlueCOUGAR_MULTIPLE_ROS {
+class BlueCOUGAR_MULTIPLE_ROS_HHI {
 public:
-    explicit BlueCOUGAR_MULTIPLE_ROS(
+    explicit BlueCOUGAR_MULTIPLE_ROS_HHI(
         ros::NodeHandle& nh, bool binning_on, bool triggered_on,
         bool aec_on, bool agc_on, int expose_us, double frame_rate)
     : nh_(nh), it_(nh_)
@@ -53,42 +53,47 @@ public:
             image_publishers_.push_back(camera_pub_);
             img_msgs_.push_back(sensor_msgs::Image());
         }
-        std::cout<< "Please wait for setting cameras...\n"<<std::endl;
-        sleep(2);
+        sub_msg_ = nh_.subscribe("/hhi/msg", 1, &BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI, this);
+        cout << "Please wait for setting cameras...\n";
+        ros::Duration(3.0).sleep();
     };    
-    ~BlueCOUGAR_MULTIPLE_ROS();
+    ~BlueCOUGAR_MULTIPLE_ROS_HHI();
 
-    std::vector<sensor_msgs::Image> img_msgs_;
-    void Publish();
+    void callbackHHI(const std_msgs::Int32::ConstPtr& msg);
 
 private:
     int n_devs_; // # of connected mvBlueCOUGAR cameras.
-    ros::NodeHandle nh_; // node handler for ROS publish.
     mvIMPACT::acquire::DeviceManager devMgr_; // Manager for all devices.
+
     vector<mvIMPACT::acquire::Device*> validDevices_; // multiple devices
     vector<BlueCougar*> bluecougars_;
+    
+    
+    // For ros.
+    ros::NodeHandle nh_;
+    image_transport::ImageTransport it_;
 
     vector<image_transport::Publisher> image_publishers_;
-    vector<image_transport::ImageTransport> img_transports_;
+    vector<sensor_msgs::Image> img_msgs_;
 
-    image_transport::ImageTransport it_;
-    image_transport::Publisher camera_pub_;  
+    ros::Subscriber sub_msg_;
+    std_msgs::Int32 msg_;
 };
 
 /* IMPLEMENTATION */
-BlueCOUGAR_MULTIPLE_ROS::~BlueCOUGAR_MULTIPLE_ROS(){
+BlueCOUGAR_MULTIPLE_ROS_HHI::~BlueCOUGAR_MULTIPLE_ROS_HHI(){
     for(int i = 0; i < n_devs_; i++){
         delete bluecougars_[i];
     }
 };
-//const sensor_msgs::ImagePtr& image_msg
-void BlueCOUGAR_MULTIPLE_ROS::Publish() {
-    for(int i = 0; i < n_devs_; i++){
-        bluecougars_[i]->grabImage(img_msgs_[i]);
-    }   
-    for(int i = 0; i <n_devs_; i++){
-        image_publishers_[i].publish(img_msgs_[i]);
-    }
-};
 
+void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI(const std_msgs::Int32::ConstPtr& msg)
+{
+    // for(int i = 0; i < n_devs_; i++){
+    //     bluecougars_[i]->grabImage(img_msgs_[i]);
+    // }   
+    // for(int i = 0; i <n_devs_; i++){
+    //     image_publishers_[i].publish(img_msgs_[i]);
+    // }
+};
 #endif
