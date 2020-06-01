@@ -165,7 +165,7 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
         return false;
     }
     ++cnt_img;
-    std::cout<< "cam ["<< frame_id_<< "] rcvd! # of img [" << cnt_img <<"] ";
+    std::cout<< "  cam ["<< frame_id_<< "] rcvd! # of img [" << cnt_img <<"] ";
 
     std::string encoding;
     const auto bayer_mosaic_parity = request_->imageBayerMosaicParity.read();
