@@ -92,13 +92,17 @@ BlueCOUGAR_MULTIPLE_ROS_HHI::~BlueCOUGAR_MULTIPLE_ROS_HHI(){
 void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI(const std_msgs::Int32::ConstPtr& msg)
 {
     msg_.data = msg->data;
+    bool state_grab = true;
     if(msg->data == 1){
         for(int i = 0; i < n_devs_; i++){
-            bluecougars_[i]->grabImage(img_msgs_[i]);
+            state_grab = state_grab & bluecougars_[i]->grabImage(img_msgs_[i]);
         }   
-        for(int i = 0; i <n_devs_; i++){
-            image_publishers_[i].publish(img_msgs_[i]);
+        if(state_grab){
+            for(int i = 0; i <n_devs_; i++){
+                image_publishers_[i].publish(img_msgs_[i]);
+            }       
         }
+        
     }
 };
 #endif
