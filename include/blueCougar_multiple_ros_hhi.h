@@ -93,16 +93,23 @@ void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI(const std_msgs::Int32::ConstPtr& m
 {
     msg_.data = msg->data;
     bool state_grab = true;
-    if(msg->data == 1){
+    if(msg_.data == 1){ // snapshot grab mode.
         for(int i = 0; i < n_devs_; i++){
             state_grab = state_grab & bluecougars_[i]->grabImage(img_msgs_[i]);
         }   
         if(state_grab){
             for(int i = 0; i <n_devs_; i++){
                 image_publishers_[i].publish(img_msgs_[i]);
-            }       
+            }
+            for(int i = 0; i < n_devs_; i++){
+                bluecougars_[i]->setExposureTime(3000);
+            }
         }
+    }
+    else if(msg_.data == 2){ // set exposure time [us]
         
+    }
+    else if(msg_.data == 3){ // set gain
     }
 };
 #endif

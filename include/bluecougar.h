@@ -52,6 +52,11 @@ class BlueCougar {
     ~BlueCougar();
     bool grabImage(sensor_msgs::Image &image_msg);
     void setHardwareTriggeredSnapshotMode();
+
+    void setExposureTime(const int& expose_us);
+    void setGain(const int& gain);
+    void setFrameRate(const int& frame_rate);
+
     string serial(){return this->serial_;};
 
   private:
@@ -137,6 +142,18 @@ void BlueCougar::setHardwareTriggeredSnapshotMode() {
     cout<<" / exposure time: "<<cs_->expose_us.read()<< "[us]" << endl;
 };
 
+void BlueCougar::setExposureTime(const int& expose_us){
+  cs_->expose_us.write(expose_us);
+  std::cout<<"set exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
+};
+void BlueCougar::setGain(const int& gain){
+  cs_->gain_dB.write(gain);
+};
+void BlueCougar::setFrameRate(const int& frame_rate){
+  cs_->frameRate_Hz.write(frame_rate);
+};
+    
+
 bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
   // NOTE: A request object is locked for the driver whenever the corresponding
   // wait function returns a valid request object.
@@ -193,6 +210,7 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
     // << ", " << stat_->captureTime_s.name() << ": " 
     //   << stat_->captureTime_s.readS() << std::endl;
     std::cout<<" expose_us: "<<request_->infoExposeTime_us.read()<<" [us]"<<std::endl;
+    std::cout<<" gain_dB: "<<request_->infoGain_dB.read()<<" [dB]"<<std::endl;
     // std::cout<<"exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
     // Release capture request
     fi_->imageRequestUnlock(request_nr);
