@@ -7,19 +7,16 @@ find_package(OpenCV REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   cv_bridge
-  
+
   sensor_msgs
   std_msgs
   message_filters
   image_transport
-
-  message_generation
 )
 catkin_package(
 	DEPENDS Eigen
   CATKIN_DEPENDS 
-  message_runtime 
-  hhi_autoexcatavor
+
 )
 
 set(mvIMPACT_DIR /opt/mvIMPACT_Acquire)

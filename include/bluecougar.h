@@ -57,6 +57,10 @@ class BlueCougar {
     void setGain(const int& gain);
     void setFrameRate(const int& frame_rate);
 
+inline double getExposureTime(){return cs_->expose_us.read();};
+inline double getGain(){return cs_->gain_dB.read();};
+inline double getFrameRate(){return cs_->frameRate_Hz.read();};
+
     string serial(){return this->serial_;};
 
   private:
@@ -152,7 +156,7 @@ void BlueCougar::setGain(const int& gain){
 void BlueCougar::setFrameRate(const int& frame_rate){
   cs_->frameRate_Hz.write(frame_rate);
 };
-    
+
 
 bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
   // NOTE: A request object is locked for the driver whenever the corresponding
