@@ -102,6 +102,8 @@ agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate)
     //cs_->autoControlMode.write(acmStandard);
     //cs_->triggerMode.write(ctmContinuous); // ctmOnDemand ctmContinuous
     if(binning_on_ == true) cs_->binningMode.write(cbmBinningHV); // cbmOff: no binning. / cbmBinningHV
+    else cs_->binningMode.write(cbmOff); // no binning 
+
     cs_->expose_us.write(expose_us_);
     cs_->frameRate_Hz.write(frame_rate_);
 
@@ -159,6 +161,8 @@ void BlueCougar::setFrameRate(const int& frame_rate){
 
 
 bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
+   cout << " image msg is received.\n";
+
   // NOTE: A request object is locked for the driver whenever the corresponding
   // wait function returns a valid request object.
   // All requests returned by
