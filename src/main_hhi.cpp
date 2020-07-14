@@ -2,7 +2,7 @@
 #include <ros/ros.h>
 
 
-#include "blueCougar_multiple_ros_hhi.h"
+#include "blueCougar_multiple_ros_hhi_info.h"
 
 // trigger pin = digIn0+
 // trigger ground level is same with the Arduino ground level.

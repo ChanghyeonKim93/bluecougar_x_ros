@@ -12,6 +12,9 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_filters
   image_transport
+
+    camera_info_manager
+  diagnostic_updater
 )
 catkin_package(
 	DEPENDS Eigen

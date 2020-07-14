@@ -42,6 +42,31 @@
         "utility": "cpp",
         "condition_variable": "cpp",
         "memory": "cpp",
-        "mutex": "cpp"
-    }
+        "mutex": "cpp",
+        "csignal": "cpp",
+        "cstdarg": "cpp",
+        "hash_map": "cpp",
+        "bitset": "cpp",
+        "complex": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "unordered_set": "cpp",
+        "hash_set": "cpp",
+        "iomanip": "cpp",
+        "numeric": "cpp",
+        "cfenv": "cpp",
+        "algorithm": "cpp",
+        "iterator": "cpp",
+        "map": "cpp",
+        "memory_resource": "cpp",
+        "optional": "cpp",
+        "random": "cpp",
+        "set": "cpp",
+        "string": "cpp",
+        "string_view": "cpp"
+    },
+    "python.autoComplete.extraPaths": [
+        "/home/larrkchlaptop/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/melodic/lib/python2.7/dist-packages"
+    ]
 }
