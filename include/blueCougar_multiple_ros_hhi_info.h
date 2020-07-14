@@ -60,7 +60,7 @@ public:
             image_transport::CameraPublisher camera_pub_ = it_.advertiseCamera(topic_name,1);
             camera_publishers_.push_back(camera_pub_);
 
-            std::string camera_yaml_name = "file:///home/larrkchlaptop/ros_camera_info/cam" + std::to_string(i) + ".yaml";
+            std::string camera_yaml_name = "file:///home/larrkchlaptop/ros_camera_info/cam" + std::to_string(i) + "_rect.yaml";
             cinfo_mgrs_.push_back(new camera_info_manager::CameraInfoManager(nh_, topic_name, camera_yaml_name));
 
             img_msgs_.push_back(sensor_msgs::Image());
@@ -114,11 +114,6 @@ void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI(const std_msgs::Int32::ConstPtr& m
         if(state_grab){
             for(int i = 0; i <n_devs_; i++){        
                 sensor_msgs::CameraInfo camMsg = cinfo_mgrs_[i]->getCameraInfo();
-                camMsg.distortion_model = "plumb_bob";
-                //camMsg.D = {1,1,0,0,0};
-                //camMsg.width = 1032;
-                //camMsg.height = 772;
-                //camMsg.
                 camera_publishers_[i].publish(img_msgs_[i], camMsg, ros::Time::now());
             }
         }
