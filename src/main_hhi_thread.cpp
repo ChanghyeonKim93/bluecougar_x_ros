@@ -2,7 +2,7 @@
 #include <ros/ros.h>
 
 
-#include "blueCougar_multiple_ros_hhi.h"
+#include "blueCougar_multiple_ros_thread.h"
 
 // trigger pin = digIn0+
 // trigger ground level is same with the Arduino ground level.
@@ -27,8 +27,8 @@ int main(int argc, char **argv) {
 	ros::param::get("~expose_us", expose_us);
     ros::param::get("~frame_rate", frame_rate);
 
-    BlueCOUGAR_MULTIPLE_ROS_HHI *bluecougars = 
-        new BlueCOUGAR_MULTIPLE_ROS_HHI(nh, binning_on, triggered_on, 
+    BlueCOUGAR_MULTIPLE_ROS_THREAD_HHI *bluecougars = 
+        new BlueCOUGAR_MULTIPLE_ROS_THREAD_HHI(nh, binning_on, triggered_on, 
         aec_on, agc_on, expose_us, frame_rate);
     
     while((bluecougars->getStatus() > -1) && ros::ok())

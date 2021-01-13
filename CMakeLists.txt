@@ -47,7 +47,7 @@ include_directories(
 
 set(SRC ${SRC} src/main_hhi.cpp)
 
-set(DCMAKE_build_type release)
+set(DCMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pg -O2 -m64 -Ofast -flto -msse3 -march=native -mfpmath=sse")
 add_executable (bluecougar_multiple_node ${SRC} )
 add_dependencies(bluecougar_multiple_node ${catkin_EXPORTED_TARGETS})

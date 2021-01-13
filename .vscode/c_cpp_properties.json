@@ -7,7 +7,7 @@
             },
             "includePath": [
                 "/home/larrkchlaptop/catkin_ws/devel/include/**",
-                "/opt/ros/melodic/include/**",
+                "/opt/ros/kinetic/include/**",
                 "/home/larrkchlaptop/catkin_ws/src/bluecougar_x_ros/include/**",
                 "/home/larrkchlaptop/catkin_ws/src/bluefox_ros/include/**",
                 "/home/larrkchlaptop/catkin_ws/src/HHI_autoexcavator/include/**",
@@ -17,7 +17,12 @@
                 "/home/larrkchlaptop/catkin_ws/src/velodyne/velodyne_laserscan/include/**",
                 "/home/larrkchlaptop/catkin_ws/src/velodyne/velodyne_pcl/include/**",
                 "/home/larrkchlaptop/catkin_ws/src/velodyne/velodyne_pointcloud/include/**",
-                "/usr/include/**"
+                "/usr/include/**",
+                "/opt/mvIMPACT_Acquire/mvIMPACT_CPP",
+                "/opt/mvIMPACT_Acquire/mvDeviceManager",
+                "/opt/mvIMPACT_Acquire/apps",
+                "/opt/mvIMPACT_Acquire/lib/x86_64",
+                "/opt/mvIMPACT_Acquire/*"
             ],
             "name": "ROS",
             "intelliSenseMode": "gcc-x64",
