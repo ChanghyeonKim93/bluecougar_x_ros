@@ -63,6 +63,47 @@ public:
         ros::Duration(1.0).sleep();
         cout << "[BlueCOUGAR multiple info] camera setting is done.\n";
     };    
+
+    explicit BlueCOUGAR_MULTIPLE_ROS_HHI(
+        ros::NodeHandle& nh, bool binning_on, bool triggered_on,
+        bool aec_on, bool agc_on, int expose_us, double frame_rate,
+        vector<string> serials_)
+    : nh_(nh), it_(nh_)
+    {
+        n_devs_ = getValidDevices(devMgr_, validDevices_);
+        std::cout << "[BlueCOUGAR multiple info] # of valid devices: " << n_devs_ << std::endl;
+        // show devices information'
+        for(int i = 0; i < n_devs_; ++i){
+            string cur_serial = serials_[i];            
+            int idx_temp = -1;
+            for(int j = 0; j < n_devs_; j++) {
+                cout << validDevices_[j]->serial.read() <<"\n";
+                if(validDevices_[j]->serial.read() == cur_serial){
+                    cout << "  idx    : " << j << endl;
+                    cout << "  valdev :" << validDevices_[j]->serial.read() <<"\n";
+                    cout << "  serial :" << cur_serial << "\n";
+                    idx_temp = j;
+                }
+            }
+            std::cout << "[" << i << "]: ";
+            BlueCougar* bluecougar_temp =
+                new BlueCougar(validDevices_[idx_temp], i, binning_on, triggered_on, 
+                        aec_on, agc_on, expose_us, frame_rate);
+            std::string topic_name = "/" + std::to_string(i) + "/image_raw";
+
+            bluecougars_.push_back(bluecougar_temp);
+
+            image_transport::Publisher camera_pub_ = it_.advertise(topic_name,3);
+            image_publishers_.push_back(camera_pub_);
+            img_msgs_.push_back(sensor_msgs::Image());
+        }
+        
+        sub_msg_ = nh_.subscribe("/hhi/msg", 1, &BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI, this);
+        cout << "[BlueCOUGAR multiple info] Please wait for setting cameras...\n";
+        ros::Duration(1.0).sleep();
+        cout << "[BlueCOUGAR multiple info] camera setting is done.\n";
+    };    
+
     ~BlueCOUGAR_MULTIPLE_ROS_HHI();
 
     void callbackHHI(const std_msgs::Int32::ConstPtr& msg);

@@ -247,7 +247,7 @@ agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate), is_grabbed_(fal
     dev_->open();
     frame_id_ = std::to_string(cam_id);
     serial_   = dev_->serial.read();
-    cout << "[BlueCOUGAR info] " << dev_->product.read() << " / serial [" << serial_ << "]";
+    cout << "Type: " << dev_->product.read() << " / serial[" << serial_ << "]";
     cs_   = new mvIMPACT::acquire::CameraSettingsBlueCOUGAR(dev_);
     fi_   = new mvIMPACT::acquire::FunctionInterface(dev_);
     stat_ = new mvIMPACT::acquire::Statistics(dev_);
@@ -264,10 +264,11 @@ agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate), is_grabbed_(fal
     if(aec_on_ == true) cs_->autoExposeControl.write(aecOn); // auto expose ?
     if(agc_on_ == true) cs_->autoGainControl.write(agcOn); // auto gain ?
 
-    cout << "[BlueCOUGAR info]  / expose_ctrl?: "<<cs_->autoExposeControl.read();
-    cout << " / freq.: "<<cs_->frameRate_Hz.read()<<" [Hz]" << endl;
+    cout << " / exp_ctrl: "<<cs_->autoExposeControl.read();
+    cout << " / freq: "<<cs_->frameRate_Hz.read()<<" [Hz]" << endl;
 
     if(trigger_on_ == true) setHardwareTriggeredSnapshotMode();
+    cout << " ============= \n";
 };
 
 BlueCougar::~BlueCougar() {
