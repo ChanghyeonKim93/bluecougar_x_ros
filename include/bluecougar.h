@@ -188,70 +188,51 @@ class BlueCougar : public ThreadData {
 void liveThread(BlueCougar* bluecougar){
   {
     lock_guard<mutex> lockedScope( s_mutex );
-    cout << " fewiojfwejiofweijofweioj\n";
     cout << "[BlueCOUGAR THREAD] start thread for [" << bluecougar->serial() << "]\n";
   }
     
   // establish access to the statistic properties
-  Statistics* pSS = bluecougar->statistics();
+  Statistics* pSS        = bluecougar->statistics();
   FunctionInterface* pFI = bluecougar->functioninterface();
-  Request* pREQUEST = bluecougar->request();
-
-  TDMR_ERROR result = DMR_NO_ERROR;
-  result = static_cast<TDMR_ERROR>( pFI->imageRequestSingle() );
-  if( result != DEV_NO_FREE_REQUEST_AVAILABLE ) {
-      lock_guard<mutex> lockedScope( s_mutex );
-      std::cout<<"[BlueCOUGAR THREAD info]Cam [" << bluecougar->frameid() << "]: the camera is not available...\n";
-  }
+  Request* pREQUEST      = bluecougar->request();
 
   const unsigned int timeout_ms = {200};
-  
-
   // run thread loop
   while( !bluecougar->isTerminated() ) {
     int error_msg = pFI->imageRequestSingle();
-    if(error_msg == mvIMPACT::acquire::DEV_NO_FREE_REQUEST_AVAILABLE) 
-      cout<<"Cam [" << bluecougar->frameid() << "]: the camera is not available...\n";
-
+    if(error_msg == mvIMPACT::acquire::DEV_NO_FREE_REQUEST_AVAILABLE){
+      //lock_guard<mutex> lockedScope( s_mutex );
+      //std::cout<<"[BlueCOUGAR THREAD info] Cam [" << bluecougar->frameid() << "]: the camera is not available...\n";
+      continue;
+    }
+      
     // wait for results from the default capture queue
     bluecougar->curr_request_nr_ = pFI->imageRequestWaitFor( timeout_ms );
+
+    if(!pFI->isRequestNrValid( bluecougar->curr_request_nr_ ) ) {
+      continue;
+    }
+    pREQUEST = pFI->getRequest( bluecougar->curr_request_nr_ );
+    if( !pREQUEST->isOK() ) {
+      lock_guard<mutex> lockedScope( s_mutex );
+      cout << "[BlueCOUGAR THREAD info] Cam ["<< bluecougar->frameid() << "]: fail to rcv..."
+           << " Error message: " << pREQUEST->requestResult.readS() <<"\n";
+      bluecougar->setUnGrabbed();
+      continue;
+    }  
     {
       lock_guard<mutex> lockedScope( s_mutex );
-      cout << " THREAD running ? \n";
+      bluecougar->setGrabbed();
+      bluecougar->addCntImg();
+      
+      cout << "[BlueCOUGAR THREAD info] from " << bluecougar->device()->serial.read()
+            << ": " << pSS->framesPerSecond.name() << ": " << pSS->framesPerSecond.readS()
+            << ", " << pSS->errorCount.name() << ": " << pSS->errorCount.readS()
+            << ", " << pREQUEST->infoFrameNr
+            << ", " << pREQUEST->infoFrameID
+            << ", " << pSS->frameCount << endl;
     }
-    if( pFI->isRequestNrValid( bluecougar->curr_request_nr_ ) ) {
-      pREQUEST = pFI->getRequest( bluecougar->curr_request_nr_ );
-      if( pREQUEST->isOK() ) {
-        // here we can display some statistical information every 100th image
-        lock_guard<mutex> lockedScope( s_mutex );
-        bluecougar->setGrabbed();
-        bluecougar->addCntImg();
-        cout << "[BlueCOUGAR THREAD info] from " << bluecougar->device()->serial.read()
-              << ": " << pSS->framesPerSecond.name() << ": " << pSS->framesPerSecond.readS()
-              << ", " << pSS->errorCount.name() << ": " << pSS->errorCount.readS()
-              << ", " << pREQUEST->infoFrameNr
-              << ", " << pREQUEST->infoFrameID
-              << ", " << pSS->frameCount << endl;
-      }
-      else {
-        lock_guard<mutex> lockedScope( s_mutex );
-        cout << "[BlueCOUGAR THREAD info] Cam ["<< bluecougar->frameid() << "]: fail to rcv..."
-              << " Error message: " << pREQUEST->requestResult.readS() <<"\n";
-      }
-    }
-    else{ 
-      lock_guard<mutex> lockedScope( s_mutex );
-      cout << "[BlueCOUGAR THREAD info] Cam ["<< bluecougar->frameid() << "]: wait...\n";
-    }
-  };
-
-  manuallyStopAcquisitionIfNeeded( bluecougar->device(), *pFI );
-  // In this sample all the next lines are redundant as the device driver will be
-  // closed now, but in a real world application a thread like this might be started
-  // several times an then it becomes crucial to clean up correctly.
-
-  // clear all queues
-  pFI->imageRequestReset( 0, 0 );
+  }
 };
 
 
@@ -303,7 +284,7 @@ void BlueCougar::setHardwareTriggeredSnapshotMode() {
     // trigger mode
     // ctsDigIn0 : digitalInput 0 as trigger source
     // In this application an image is triggered by a rising edge. (over +3.3 V) 
-    cs_->triggerSource.write(ctsDigIn0);
+    cs_->triggerSource.write(ctsDigIn1);
     cs_->triggerMode.write(ctmOnRisingEdge);
     //cs_->imageRequestTimeout_ms.write(0); // infinite trigger timeout
    
@@ -339,6 +320,7 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
   // unlocked no matter which result mvIMPACT::acquire::Request::requestResult
   // contains.
   // http://www.matrix-vision.com/manuals/SDK_CPP/ImageAcquisition_section_capture.html
+    std::cout << "try to recv cam [" << frame_id_ <<"]\n";
     int error_msg = fi_->imageRequestSingle();
     if(error_msg == mvIMPACT::acquire::DEV_NO_FREE_REQUEST_AVAILABLE) 
       std::cout<<"Cam [" << frame_id_ << "]: the camera is not available...\n";
@@ -346,7 +328,6 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
     int request_nr = fi_->imageRequestWaitFor(1000);
     // if failed,
     if(!fi_->isRequestNrValid( request_nr )) {
-        fi_->imageRequestUnlock( request_nr );
         return false;
     }
 
@@ -355,11 +336,10 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
     if (!request_->isOK()) {
         // need to unlock here because the request is valid even if it is not ok
         std::cout<< "[BlueCOUGAR info] Cam ["<< frame_id_<< "]: fail to rcv... \n";
-        fi_->imageRequestUnlock(request_nr);
         return false;
     }
     ++cnt_img;
-    std::cout<< "[BlueCOUGAR info] Cam ["<< frame_id_<< "]: rcv success! # of img [" << cnt_img <<"] ";
+    std::cout<< "[BlueCOUGAR info] Cam ["<< frame_id_<< "]: rcv success! # of img [" << cnt_img <<"]";
 
     std::string encoding;
     const auto bayer_mosaic_parity = request_->imageBayerMosaicParity.read();
@@ -376,7 +356,7 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
                          request_->imageLinePitch.read(),
                          request_->imageData.read());
     std::cout<<" sz: [" << request_->imageWidth.read()
-    << "x" << request_->imageHeight.read()<<"]";
+    << "x" << request_->imageHeight.read()<<"]\n";
     fi_->imageRequestUnlock(request_nr);
     return true;
 };

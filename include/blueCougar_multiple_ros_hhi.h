@@ -26,6 +26,11 @@
 
 #include "bluecougar.h"
 
+// GX033765 (1.13) boom0  (     )
+// GX033832 (1.14) boom1  (     )
+// GX032919 (2.30) cabin0 (lower)
+// GX032926 (2.31) cabin1 (upper)
+
 using namespace std;
 using namespace mvIMPACT::acquire;
 using namespace mvIMPACT::acquire::GenICam;
@@ -40,9 +45,9 @@ public:
         n_devs_ = getValidDevices(devMgr_, validDevices_);
         std::cout << "[BlueCOUGAR multiple info] # of valid devices: " << n_devs_ << std::endl;
         // show devices information
-        for(int i = 0; i < n_devs_; i++){
+        for(int i = 0; i < n_devs_; i++) {
             std::cout << "[" << i << "]: ";
-            BlueCougar* bluecougar_temp = 
+            BlueCougar* bluecougar_temp =
             new BlueCougar(validDevices_[i], i, binning_on, triggered_on, 
                         aec_on, agc_on, expose_us, frame_rate);
             std::string topic_name = "/" + std::to_string(i) + "/image_raw";
@@ -61,7 +66,7 @@ public:
     ~BlueCOUGAR_MULTIPLE_ROS_HHI();
 
     void callbackHHI(const std_msgs::Int32::ConstPtr& msg);
-    int getStatus() const { return msg_.data;};
+    int getStatus() const { return msg_.data; };
 
 private:
     int n_devs_; // # of connected mvBlueCOUGAR cameras.
@@ -69,7 +74,6 @@ private:
 
     vector<mvIMPACT::acquire::Device*> validDevices_; // multiple devices
     vector<BlueCougar*> bluecougars_;
-    
     
     // For ros.
     ros::NodeHandle nh_;
@@ -94,15 +98,13 @@ void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI(const std_msgs::Int32::ConstPtr& m
     msg_.data = msg->data;
     bool state_grab = true;
     if(msg_.data == 1){ // snapshot grab mode.
-        for(int i = 0; i < n_devs_; i++){
+        for(int i = 0; i < n_devs_; i++) {
             state_grab = state_grab & bluecougars_[i]->grabImage(img_msgs_[i]);
-	    ros::Duration(1).sleep();
         }   
-        if(state_grab){
+        if(state_grab) {
             for(int i = 0; i <n_devs_; i++){
                 image_publishers_[i].publish(img_msgs_[i]);
             }
-            
         }
     }
     else if(msg_.data == 2){ // set exposure time [us]
