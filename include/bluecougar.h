@@ -130,9 +130,18 @@ class BlueCougar : public ThreadData {
     bool grabImageThread(sensor_msgs::Image &image_msg);
     void setHardwareTriggeredSnapshotMode();
 
+    void setTriggerMode(bool onoff);
+    void setHardwareBinningMode(bool onoff);
+    void setSoftwareBinningMode(bool onoff, int lvl);
+    void getSoftwareBinning(int lvl, uint8_t* src, uint8_t* dst);
     void setExposureTime(const int& expose_us);
     void setGain(const int& gain);
     void setFrameRate(const int& frame_rate);
+    void setAutoExposureMode(bool onoff);
+    void setAutoGainMode(bool onoff);
+    void setWhiteBalance(const int& wbp_mode, double r_gain, double g_gain, double b_gain);
+
+    void setHighDynamicRange(bool hdr_onoff);
 
     inline double getExposureTime(){return cs_->expose_us.read();};
     inline double getGain(){return cs_->gain_dB.read();};
@@ -173,6 +182,10 @@ class BlueCougar : public ThreadData {
     string frame_id_;
 
     bool is_grabbed_;
+
+
+    bool software_binning_on_;
+    bool software_binning_level_;
 
 
     mvIMPACT::acquire::DeviceManager devMgr_; // not used in single.
@@ -240,7 +253,8 @@ void liveThread(BlueCougar* bluecougar){
 BlueCougar::BlueCougar(mvIMPACT::acquire::Device* dev, int cam_id, bool binning_on, 
 bool trigger_on, bool aec_on, bool agc_on, int expose_us, double frame_rate) 
 : dev_(dev), binning_on_(binning_on), trigger_on_(trigger_on), aec_on_(aec_on), 
-agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate), is_grabbed_(false)
+agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate), is_grabbed_(false),
+software_binning_on_(false), software_binning_level_(false)
 {
     cnt_img = 0;
     
@@ -251,6 +265,7 @@ agc_on_(agc_on), expose_us_(expose_us), frame_rate_(frame_rate), is_grabbed_(fal
     cs_   = new mvIMPACT::acquire::CameraSettingsBlueCOUGAR(dev_);
     fi_   = new mvIMPACT::acquire::FunctionInterface(dev_);
     stat_ = new mvIMPACT::acquire::Statistics(dev_);
+    img_proc_= new mvIMPACT::acquire::ImageProcessing(dev_); // for White balance
 
     cs_->binningMode.write(cbmOff);
     //cs_->autoControlMode.write(acmStandard);
@@ -285,7 +300,7 @@ void BlueCougar::setHardwareTriggeredSnapshotMode() {
     // trigger mode
     // ctsDigIn0 : digitalInput 0 as trigger source
     // In this application an image is triggered by a rising edge. (over +3.3 V) 
-    cs_->triggerSource.write(ctsDigIn1);
+    cs_->triggerSource.write(ctsDigIn0);
     cs_->triggerMode.write(ctmOnRisingEdge);
     //cs_->imageRequestTimeout_ms.write(0); // infinite trigger timeout
    
@@ -305,9 +320,6 @@ void BlueCougar::setExposureTime(const int& expose_us){
   cs_->expose_us.write(expose_us);
   std::cout<<"[BlueCOUGAR info] set exposure time: "<<cs_->expose_us.read()<< "[us]"<<std::endl;
 };
-void BlueCougar::setGain(const int& gain){
-  cs_->gain_dB.write(gain);
-};
 void BlueCougar::setFrameRate(const int& frame_rate){
   cs_->frameRate_Hz.write(frame_rate);
 };
@@ -326,7 +338,7 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
     if(error_msg == mvIMPACT::acquire::DEV_NO_FREE_REQUEST_AVAILABLE) 
       std::cout<<"Cam [" << frame_id_ << "]: the camera is not available...\n";
 
-    int request_nr = fi_->imageRequestWaitFor(1000);
+    int request_nr = fi_->imageRequestWaitFor(50);
     // if failed,
     if(!fi_->isRequestNrValid( request_nr )) {
         return false;
@@ -360,6 +372,133 @@ bool BlueCougar::grabImage(sensor_msgs::Image &image_msg){
     << "x" << request_->imageHeight.read()<<"]\n";
     fi_->imageRequestUnlock(request_nr);
     return true;
+};
+
+void BlueCougar::setHardwareBinningMode(bool onoff){
+  if(!software_binning_on_){
+    if(onoff == true) {
+      cs_->binningMode.write(cbmBinningHV); // cbmBinningHV
+      binning_on_ = true;
+    }
+    else {
+      cs_->binningMode.write(cbmOff); // cbmOff: no binning. 
+      binning_on_ = false;
+    }
+  }
+  else{
+    cs_->binningMode.write(cbmOff); 
+    binning_on_ = false;
+    cout <<" WARN: software binning mode intervenes.\n";
+  }
+};
+
+void BlueCougar::setSoftwareBinningMode(bool onoff, int lvl){
+  if(onoff == true) { // software on
+    cs_->binningMode.write(cbmOff);
+    software_binning_level_ = lvl;
+    software_binning_on_ = true;
+  }else{
+    software_binning_on_ = false;
+  }
+}
+
+void BlueCougar::getSoftwareBinning(int lvl, uint8_t* src, uint8_t* dst){
+  int index = 0;
+  int den = std::pow(2,lvl);
+  int stepsz_dst = 3008/den;
+  int stepsz_org = 3008*den;
+  
+  int den4 = den*4;
+  for(int v = 0; v < 480/den; v++){
+    for(int u = 0; u < 752/den; u++){
+      int u4 = 4*u;
+      *(dst+v*stepsz_dst+u4)   = *(src+v*stepsz_org+u*den4);	
+      *(dst+v*stepsz_dst+u4+1) = *(src+v*stepsz_org+u*den4+1);	    
+      *(dst+v*stepsz_dst+u4+2) = *(src+v*stepsz_org+u*den4+2);	    
+      *(dst+v*stepsz_dst+u4+3) = *(src+v*stepsz_org+u*den4+3);	        
+    }
+  }
+}
+
+void BlueCougar::setTriggerMode(bool onoff) {
+  if(onoff == true){
+    cout<<"Set ["<<serial_<<"] in trigger mode."<<endl;
+    // trigger mode
+    // ctsDigIn0 : digitalInput 0 as trigger source
+    // In this application an image is triggered by a rising edge. (over +3.3 V) 
+    cs_->triggerSource.write(ctsDigIn0);
+    cs_->triggerMode.write(ctmOnRisingEdge); // ctmOnRisingEdge ctmOnHighLevel
+    cs_->frameDelay_us.write(0);
+    cout<<"  trigger source: "<<cs_->triggerSource.read();
+    cout<<" / trigger mode: "<<cs_->triggerMode.read();
+    cout<<" / exposure time: "<<cs_->expose_us.read()<< "[us]" << endl;
+  }
+  else{
+    cs_->triggerMode.write(ctmContinuous);
+  }
+};
+
+void BlueCougar::setAutoExposureMode(bool onoff){
+  if(onoff) cs_->autoExposeControl.write(aecOn);
+  else cs_->autoExposeControl.write(aecOff);
+};
+void BlueCougar::setAutoGainMode(bool onoff){
+  if(onoff) cs_->autoGainControl.write(agcOn);
+  else cs_->autoGainControl.write(agcOff);
+};
+
+void BlueCougar::setGain(const int& gain){
+  cs_->gain_dB.write(gain);
+};
+void BlueCougar::setWhiteBalance(const int& wbp_mode, double r_gain, double g_gain, double b_gain){
+  // white balance
+    // user defined white balance parameters
+    // wbpTungsten, wbpHalogen, wbpFluorescent, wbpDayLight, wbpPhotoFlash, wbpBlueSky, wbpUser1.
+
+  if(wbp_mode == -1){
+  }
+  else if(wbp_mode == wbpTungsten){
+    img_proc_->whiteBalance.write(wbpTungsten);
+  }
+  else if(wbp_mode == wbpHalogen){
+    img_proc_->whiteBalance.write(wbpHalogen);
+  }
+  else if(wbp_mode == wbpFluorescent){
+    img_proc_->whiteBalance.write(wbpFluorescent);
+  }
+  else if(wbp_mode == wbpDayLight){
+    img_proc_->whiteBalance.write(wbpDayLight);
+  }
+  else if(wbp_mode == wbpPhotoFlash){
+    img_proc_->whiteBalance.write(wbpPhotoFlash);
+  }
+  else if(wbp_mode == wbpBlueSky){
+    img_proc_->whiteBalance.write(wbpBlueSky);
+  }
+  else if(wbp_mode == wbpUser1){
+    auto wbp_set = img_proc_->getWBUserSetting(0);
+    wbp_set.redGain.write(r_gain);
+    wbp_set.greenGain.write(g_gain);
+    wbp_set.blueGain.write(b_gain);
+  }
+};
+
+void BlueCougar::setHighDynamicRange(bool hdr_onoff){
+  //set HDR mode
+  auto &hdr_control = cs_->getHDRControl();
+  if(!hdr_control.isAvailable()){
+    hdr_onoff = false;
+    cout << " HDR control is not supported.\n";
+    return;
+  }
+  // cHDRmFixed0,cHDRmFixed1,cHDRmFixed2,cHDRmFixed3,cHDRmFixed4,cHDRmFixed5,cHDRmFixed6,cHDRmUser
+  if(hdr_onoff){
+    hdr_control.HDREnable.write(bTrue); // set HDR on/off.
+    hdr_control.HDRMode.write(cHDRmFixed0);
+  }
+  else{
+    hdr_control.HDREnable.write(bFalse); // set HDR on/off.
+  }
 };
 
 

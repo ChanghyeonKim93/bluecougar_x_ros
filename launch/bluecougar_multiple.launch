@@ -1,6 +1,6 @@
 <launch>
     <arg name="binning_on" default="true"/>
-    <arg name="triggered_on" default="true"/>
+    <arg name="triggered_on" default="false"/>
     <arg name="auto_exposure_control" default="true"/>
     <arg name="auto_gain_control" default="true"/>
     <arg name="expose_us" default="30000"/>

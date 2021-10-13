@@ -26,6 +26,9 @@
 
 #include "bluecougar.h"
 
+#include "dynamic_reconfigure/server.h"
+#include "bluecougar/bluecougarDynConfig.h"
+
 // GX033765 (1.13) boom0  (     )
 // GX033832 (1.14) boom1  (     )
 // GX032919 (2.30) cabin0 (lower)
@@ -98,6 +101,11 @@ public:
             img_msgs_.push_back(sensor_msgs::Image());
         }
         
+
+        // dynamic reconfigure for real-time hardware parameter settings
+        f_ = boost::bind(&BlueCOUGAR_MULTIPLE_ROS_HHI::callbackDynReconfig, this, _1, _2);
+        server_.setCallback(f_);
+
         sub_msg_ = nh_.subscribe("/hhi/msg", 1, &BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI, this);
         cout << "[BlueCOUGAR multiple info] Please wait for setting cameras...\n";
         ros::Duration(1.0).sleep();
@@ -105,6 +113,8 @@ public:
     };    
 
     ~BlueCOUGAR_MULTIPLE_ROS_HHI();
+
+    void callbackDynReconfig(bluecougar::bluecougarDynConfig &config, uint32_t lvl);
 
     void callbackHHI(const std_msgs::Int32::ConstPtr& msg);
     int getStatus() const { return msg_.data; };
@@ -125,6 +135,9 @@ private:
 
     ros::Subscriber sub_msg_;
     std_msgs::Int32 msg_;
+
+    dynamic_reconfigure::Server<bluecougar::bluecougarDynConfig> server_;
+    dynamic_reconfigure::Server<bluecougar::bluecougarDynConfig>::CallbackType f_;
 };
 
 /* IMPLEMENTATION */
@@ -136,6 +149,7 @@ BlueCOUGAR_MULTIPLE_ROS_HHI::~BlueCOUGAR_MULTIPLE_ROS_HHI(){
 
 void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI(const std_msgs::Int32::ConstPtr& msg)
 {
+    printf("bluecougar callback\n");
     msg_.data = msg->data;
     bool state_grab = true;
     if(msg_.data == 1){ // snapshot grab mode.
@@ -155,5 +169,67 @@ void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackHHI(const std_msgs::Int32::ConstPtr& m
     }
     else if(msg_.data == 3){ // set gain
     }
+};
+
+void BlueCOUGAR_MULTIPLE_ROS_HHI::callbackDynReconfig(bluecougar::bluecougarDynConfig &config, uint32_t lvl) {
+    if(config.hdr){
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setHighDynamicRange(true);
+        cout << " DYNRECONFIG HDR:" <<  config.hdr << "\n";
+    }
+    else{
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setHighDynamicRange(false);
+    }
+        
+    if(config.trigger_mode){
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setTriggerMode(true);
+    }
+    else{
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setTriggerMode(false);
+    }
+    
+    if(config.binning_mode){
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setHardwareBinningMode(true);
+    }
+    else{
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setHardwareBinningMode(false);
+    }
+
+    if(config.aec){
+        for(int i = 0; i < n_devs_; i++){
+            bluecougars_[i]->setAutoExposureMode(true);
+        }
+    }
+    else{
+        for(int i = 0; i < n_devs_; i++){
+            bluecougars_[i]->setAutoExposureMode(false);
+            bluecougars_[i]->setExposureTime(config.expose_us);
+        }
+    }
+
+    if(config.agc){
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setAutoGainMode(true);
+    }
+    else{
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setAutoGainMode(false);
+    }
+
+    if(config.wbp == -1){ // off
+       for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setWhiteBalance(config.wbp,0,0,0);
+    }
+    else{ // on! each mode...
+        for(int i = 0; i < n_devs_; i++)
+            bluecougars_[i]->setWhiteBalance(config.wbp,0,0,0);
+    }
+    
+    ROS_INFO("Parameter reconfigured.\n");
 };
 #endif

@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh("~");
 
     bool binning_on   = true;
-    bool triggered_on = false;
+    bool triggered_on = true;
 
     bool aec_on       = true; // auto exposure control on / off
     bool agc_on       = true; // auto gain control on / off
@@ -39,10 +39,10 @@ int main(int argc, char **argv) {
     ros::param::get("~serial_cam_cabin0", serials[2]);
     ros::param::get("~serial_cam_cabin1", serials[3]);
     
-    serials[0] = "GX033765"; //  boom0 (X104iG, gray )
-    serials[1] = "GX033832"; //  boom1 (X104iG, gray )
-    serials[2] = "GX032919"; // cabin0 (X104iC, color)
-    serials[3] = "GX032926"; // cabin1 (X104iC, color)
+    //serials[0] = "GX033765"; //  boom0 (X104iG, gray )
+    //serials[1] = "GX033832"; //  boom1 (X104iG, gray )
+    //serials[2] = "GX032919"; // cabin0 (X104iC, color)
+    //serials[3] = "GX032926"; // cabin1 (X104iC, color)
         
     BlueCOUGAR_MULTIPLE_ROS_HHI *bluecougars = 
        // new BlueCOUGAR_MULTIPLE_ROS_HHI(nh, binning_on, triggered_on, 
